@@ -1,5 +1,5 @@
 import React, { useContext } from "react";
-import { GraphContext } from "../grapher/GraphApp";
+import { GraphContext } from "../grapher/Grapher";
 import "./details.css";
 
 function Details() {
@@ -8,7 +8,6 @@ function Details() {
 
   return (
     <>
-      {console.log("Details Selected user:", selectedUser)}
       <div className="details">
         <h1>Details</h1>
         {selectedUser && (
@@ -59,7 +58,9 @@ function Details() {
 
             <p>
               <strong>Public Repos:</strong>
-              {selectedUser.public_repos ? selectedUser.public_repos : " Private"}
+              {selectedUser.public_repos
+                ? selectedUser.public_repos
+                : " Private"}
             </p>
             <p>
               <strong>Blog:</strong>
@@ -67,7 +68,9 @@ function Details() {
             </p>
             <p>
               <strong>Public Gists:</strong>
-              {selectedUser.public_gists ? selectedUser.public_gists : " Private"}
+              {selectedUser.public_gists
+                ? selectedUser.public_gists
+                : " Private"}
             </p>
           </div>
         )}

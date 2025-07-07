@@ -4,18 +4,15 @@ import debounce from "lodash.debounce";
 import "react-bootstrap-typeahead/css/Typeahead.css";
 import "./typeahead.css";
 
-// Simple in-memory cache
 const searchCache = {};
 
 function AsyncExample({ onUserSelect }) {
   const [options, setOptions] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Core GitHub user search
   const fetchUsers = async (query) => {
     const token = import.meta.env.VITE_GITHUB_TOKEN;
 
-    // Return from cache if possible
     if (searchCache[query]) {
       setOptions(searchCache[query]);
       return;
@@ -53,7 +50,6 @@ function AsyncExample({ onUserSelect }) {
     setIsLoading(false);
   };
 
-  // Debounce network calls
   const debouncedFetch = useCallback(debounce(fetchUsers, 400), []);
 
   return (
@@ -89,7 +85,5 @@ function AsyncExample({ onUserSelect }) {
     />
   );
 }
-
-
 
 export default AsyncExample;

@@ -1,4 +1,3 @@
-// Initial graph state including nodes and links
 export const initialState = {
   selectedUser: {},
   nodes: [],
@@ -7,7 +6,6 @@ export const initialState = {
   expandedNodes: [],
 };
 
-// Reducer to manage updates to the graph state
 export function graphReducer(state, action) {
   switch (action.type) {
     case "SET_NEW_NODES":
