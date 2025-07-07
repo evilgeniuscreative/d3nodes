@@ -4,7 +4,11 @@
   padding: 2rem;
   text-align: center;
 }
-
+.app-container {
+  height: 90vh;
+  width: 80vw;
+  padding: 10vh auto;
+}
 .logo {
   height: 6em;
   padding: 1.5em;
