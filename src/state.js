@@ -1,34 +1,42 @@
 // Initial graph state including nodes and links
 export const initialState = {
-    nodes: [],
-    links: [],
-    selectedNode: null,
-    expandedNodes: [],
+  selectedUser: {},
+  nodes: [],
+  links: [],
+  selectedNode: null,
+  expandedNodes: [],
 };
 
 // Reducer to manage updates to the graph state
 export function graphReducer(state, action) {
-    switch (action.type) {
-        case 'SET_NEW_NODES':
-            return {
-                ...state,
-                nodes: action.payload.nodes,
-                links: action.payload.links,
-            };
+  switch (action.type) {
+    case "SET_NEW_NODES":
+      return {
+        ...state,
+        nodes: action.payload.nodes,
+        links: action.payload.links,
+      };
 
-        case 'SELECT_NODE':
-            return {
-                ...state,
-                selectedNode: action.payload,
-            };
+    case "SELECT_NODE":
+      return {
+        ...state,
+        selectedNode: action.payload,
+      };
 
-        case 'MARK_NODE_EXPANDED':
-            return {
-                ...state,
-                expandedNodes: [...state.expandedNodes, action.payload],
-            };
+    case "SELECT_USER":
+      console.log("SELECT_USER", action.payload);
+      return {
+        ...state,
+        selectedUser: action.payload,
+      };
 
-        default:
-            return state;
-    }
+    case "MARK_NODE_EXPANDED":
+      return {
+        ...state,
+        expandedNodes: [...state.expandedNodes, action.payload],
+      };
+
+    default:
+      return state;
+  }
 }

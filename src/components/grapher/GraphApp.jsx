@@ -1,9 +1,10 @@
-import React, { useReducer, useRef, useEffect } from "react";
+import React, { createContext, useReducer, useRef, useEffect } from "react";
 import * as d3 from "d3";
-import { graphReducer, initialState } from "../../state.js";
-import Details from "../details/Details.jsx";
-import AsyncExample from "../typeahead/Typeahead.jsx";
-import RateLimitStatus from "../ratelimit/RateLimit.jsx";
+import { graphReducer, initialState } from "../../state";
+import Details from "../details/Details";
+import AsyncExample from "../typeahead/Typeahead";
+import RateLimitStatus from "../ratelimit/RateLimit";
+export const GraphContext = createContext();
 
 function GraphApp() {
   // useReducer holds graph state: nodes, links, expanded flags, etc.
@@ -89,6 +90,12 @@ function GraphApp() {
   function handleUserSelect(user) {
     const newNode = { id: user.login };
     console.log("Selected user:", user);
+
+    dispatch({
+      type: "SELECT_USER",
+      payload: user,
+    });
+
     dispatch({
       type: "SET_NEW_NODES",
       payload: {
@@ -99,6 +106,7 @@ function GraphApp() {
 
     dispatch({ type: "SELECT_NODE", payload: newNode });
     console.log("Fetching connections for:", newNode);
+    console.log("TheCurrentState:", state);
     fetchConnections(newNode);
   }
 
@@ -192,21 +200,23 @@ function GraphApp() {
 
   // ✅ Layout with sidebar and graph area
   return (
-    <div className="flex h-screen">
-      <RateLimitStatus />
-      {/* 🟦 Sidebar: search and node details */}
-      <div className="w-1/3 p-4 overflow-y-auto border-r">
-        <h1 className="text-xl font-bold mb-4">PeopleGraph</h1>
-        <AsyncExample onUserSelect={handleUserSelect} />
+    <GraphContext.Provider value={{ state, dispatch }}>
+      <div className="">
+        <RateLimitStatus />
+        {/* 🟦 Sidebar: search and node details */}
+        <div className="">
+          <h1 className="">Git Connections Graph</h1>
+          <AsyncExample onUserSelect={handleUserSelect} />
+          {console.log("Selected node:", state.selectedNode)}
+          {state.selectedNode && <Details />}
+        </div>
 
-        {state.selectedNode && <Details userId={state.selectedNode.id} />}
+        {/* 🟥 D3 graph canvas */}
+        <div style={{ flexGrow: 1, height: "100vh" }}>
+          <svg ref={svgRef} width="100%" height="100%"></svg>
+        </div>
       </div>
-
-      {/* 🟥 D3 graph canvas */}
-      <div style={{ flexGrow: 1, height: "100vh" }}>
-        <svg ref={svgRef} width="100%" height="100%"></svg>
-      </div>
-    </div>
+    </GraphContext.Provider>
   );
 }
 

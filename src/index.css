@@ -30,9 +30,10 @@ body {
 }
 
 h1 {
-  font-size: 3.2em;
+  font-size: 2.2em;
   line-height: 1.1;
 }
+
 
 button {
   border-radius: 8px;
@@ -66,9 +67,3 @@ button:focus-visible {
   }
 }
 
-a.dropdown-item {
-  display: block;
-  padding: 8px 2px;
-  margin: 5px;
-  border: 1px solid grey;
-}
