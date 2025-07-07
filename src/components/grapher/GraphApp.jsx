@@ -1,9 +1,10 @@
 import React, { useReducer, useRef, useEffect } from 'react';
 import * as d3 from 'd3';
 import { graphReducer, initialState } from '../../state.js';
+import Details from '../details/Details.jsx';
 import AsyncExample from '../typeahead/Typeahead.jsx';
 
-export default function GraphApp() {
+function GraphApp() {
     const [state, dispatch] = useReducer(graphReducer, initialState);
     const svgRef = useRef(null);
 
@@ -84,8 +85,9 @@ export default function GraphApp() {
         const svg = d3.select(svgRef.current);
         svg.selectAll('*').remove();
 
-        const width = 600;
-        const height = 600;
+        const bounds = svgRef.current.getBoundingClientRect();
+        const width = bounds.width;
+        const height = bounds.height;
 
         const simulation = d3
             .forceSimulation(state.nodes)
@@ -161,11 +163,13 @@ export default function GraphApp() {
         <div className='p-4 max-w-xl mx-auto'>
             <h1 className='text-xl font-bold mb-4'>PeopleGraph</h1>
             <AsyncExample onUserSelect={handleUserSelect} />
-            <svg
-                ref={svgRef}
-                width={600}
-                height={600}
-            ></svg>
+            <div style={{ width: '100vw', height: '100vh' }}>
+                <svg
+                    ref={svgRef}
+                    width='100%'
+                    height='100%'
+                ></svg>
+            </div>
 
             {state.selectedNode && (
                 <div className='mt-4 p-4 border rounded bg-gray-50'>
@@ -173,8 +177,11 @@ export default function GraphApp() {
                         Selected Node
                     </h2>
                     <p>ID: {state.selectedNode.id}</p>
+                    <Details />
                 </div>
             )}
         </div>
     );
 }
+
+export default GraphApp;
