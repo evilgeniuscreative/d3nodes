@@ -17,15 +17,15 @@ function Details() {
               <strong>Login:</strong> {selectedUser.login}
               <br />
               <strong>Location:</strong>{" "}
-              {selectedUser.location ? selectedUser.location : "N/A"}
+              {selectedUser.location ? selectedUser.location : " Private"}
               <br />
               <strong>Email:</strong>{" "}
-              {selectedUser.email ? selectedUser.email : "N/A"}
+              {selectedUser.email ? selectedUser.email : " Private"}
               <br />
               <strong>GitHub Profile:</strong>
               <br />{" "}
               <a href={selectedUser.html_url}>
-                {selectedUser.html_url ? selectedUser.html_url : "N/A"}
+                {selectedUser.html_url ? selectedUser.html_url : " Private"}
               </a>
             </p>
             <p>
@@ -41,33 +41,33 @@ function Details() {
             </p>
             <p>
               <strong>Company:</strong>
-              {selectedUser.company ? selectedUser.company : "N/A"}
+              {selectedUser.company ? selectedUser.company : " Private"}
             </p>
             <p>
               <strong>Bio:</strong>
-              {selectedUser.bio ? selectedUser.bio : "N/A"}
+              {selectedUser.bio ? selectedUser.bio : " Private"}
             </p>
             <p>
               <strong>Followers:</strong>
-              {selectedUser.followers ? selectedUser.followers : "N/A"}
+              {selectedUser.followers ? selectedUser.followers : " Private"}
             </p>
 
             <p>
               <strong>Following:</strong>
-              {selectedUser.following ? selectedUser.following : "N/A"}
+              {selectedUser.following ? selectedUser.following : " Private"}
             </p>
 
             <p>
               <strong>Public Repos:</strong>
-              {selectedUser.public_repos ? selectedUser.public_repos : "N/A"}
+              {selectedUser.public_repos ? selectedUser.public_repos : " Private"}
             </p>
             <p>
               <strong>Blog:</strong>
-              {selectedUser.blog ? selectedUser.blog : "N/A"}
+              {selectedUser.blog ? selectedUser.blog : " Private"}
             </p>
             <p>
               <strong>Public Gists:</strong>
-              {selectedUser.public_gists ? selectedUser.public_gists : "N/A"}
+              {selectedUser.public_gists ? selectedUser.public_gists : " Private"}
             </p>
           </div>
         )}
