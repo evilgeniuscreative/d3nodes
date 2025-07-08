@@ -1,0 +1,14 @@
+.details {
+  border: 1px solid #ccc;
+  padding: 10px;
+  position: absolute;
+  top: 0;
+  right: 0;
+  height: 100vh;
+  min-width: 250px;
+}
+.avatar {
+  width: 250px;
+  height: 250px;
+  border-radius: 5px;
+}
