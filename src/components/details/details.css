@@ -1,3 +1,11 @@
+@keyframes slideIn {
+  from {
+    right: -300px;
+  }
+  to {
+    right: 0;
+  }
+}
 .details {
   border: 1px solid #ccc;
   padding: 10px;
@@ -6,6 +14,7 @@
   right: 0;
   height: 100vh;
   min-width: 250px;
+  animation: slideIn 0.5s ease-in-out;
 }
 .avatar {
   width: 250px;
