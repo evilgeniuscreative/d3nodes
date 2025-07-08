@@ -9,6 +9,24 @@ function GraphApp() {
   const [state, dispatch] = useReducer(graphReducer, initialState);
   const svgRef = useRef(null);
 
+  async function fetchUserDetails(userId) {
+    const headers = {
+      Authorization: `token ${import.meta.env.VITE_GITHUB_TOKEN}`,
+    };
+
+    try {
+      const res = await fetch(`https://api.github.com/users/${userId}`, {
+        headers,
+      });
+      if (!res.ok)
+        throw new Error(`Failed to fetch user details for ${userId}`);
+      const user = await res.json();
+      dispatch({ type: "SELECT_USER", payload: user });
+    } catch (err) {
+      console.error("Error fetching user details:", err);
+    }
+  }
+
   async function fetchConnections(node) {
     const headers = {
       Authorization: `token ${import.meta.env.VITE_GITHUB_TOKEN}`,
@@ -72,6 +90,7 @@ function GraphApp() {
       console.log("fetching connections for", d);
       fetchConnections(d);
     }
+    fetchUserDetails(d.id);
   }
 
   function handleUserSelect(user) {
