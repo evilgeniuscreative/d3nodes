@@ -1,12 +1,23 @@
-import React from "react";
-import GraphApp from "./components/grapher/Grapher";
+import { searchUsers } from "./api"; // add this at the top
 
-function App() {
-  return (
-    <div className="app-container">
-      <GraphApp />
-    </div>
-  );
-}
+// inside useEffect:
+useEffect(() => {
+  if (!value) {
+    setOptions([]);
+    return;
+  }
 
-export default App;
+  const fetchUsers = async () => {
+    setIsLoading(true);
+    try {
+      const users = await searchUsers(value);
+      setOptions(users);
+    } catch (err) {
+      console.error("Error searching GitHub users:", err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  fetchUsers();
+}, [value]);

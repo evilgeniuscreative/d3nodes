@@ -1,81 +1,77 @@
-import React, { useContext } from "react";
+import React, { useEffect, useState, useContext } from "react";
 import { GraphContext } from "../grapher/Grapher";
-import "./details.css";
+import { fetchUserAndConnections } from "../../api";
+import {
+  Card,
+  CardHeader,
+  CardContent,
+  Avatar,
+  Typography,
+  CircularProgress,
+  Box,
+} from "@mui/material";
 
 function Details() {
   const { state } = useContext(GraphContext);
-  const selectedUser = state.selectedUser;
+  const user = state.selectedUser;
+
+  const [details, setDetails] = useState(null);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!user?.login) return;
+
+    setLoading(true);
+    fetchUserAndConnections(user.login)
+      .then(setDetails)
+      .catch((err) => {
+        console.error("Failed to fetch user details:", err);
+        setDetails(null);
+      })
+      .finally(() => setLoading(false));
+  }, [user]);
+
+  if (!user?.login) return null;
 
   return (
-    <>
-      <div className="details">
-        <h1>Details</h1>
-        {selectedUser && (
-          <div>
-            <p>
-              <strong>Login:</strong> {selectedUser.login}
-              <br />
-              <strong>Location:</strong>{" "}
-              {selectedUser.location ? selectedUser.location : " Private"}
-              <br />
-              <strong>Email:</strong>{" "}
-              {selectedUser.email ? selectedUser.email : " Private"}
-              <br />
-              <strong>GitHub Profile:</strong>
-              <br />{" "}
-              <a href={selectedUser.html_url}>
-                {selectedUser.html_url ? selectedUser.html_url : " Private"}
-              </a>
-            </p>
-            <p>
-              {" "}
-              <a href={selectedUser.html_url}>
-                {" "}
-                <img
-                  className="avatar"
-                  src={selectedUser.avatar_url}
-                  alt={selectedUser.login}
-                />
-              </a>
-            </p>
-            <p>
-              <strong>Company:</strong>
-              {selectedUser.company ? selectedUser.company : " Private"}
-            </p>
-            <p>
-              <strong>Bio:</strong>
-              {selectedUser.bio ? selectedUser.bio : " Private"}
-            </p>
-            <p>
-              <strong>Followers:</strong>
-              {selectedUser.followers ? selectedUser.followers : " Private"}
-            </p>
-
-            <p>
-              <strong>Following:</strong>
-              {selectedUser.following ? selectedUser.following : " Private"}
-            </p>
-
-            <p>
-              <strong>Public Repos:</strong>
-              {selectedUser.public_repos
-                ? selectedUser.public_repos
-                : " Private"}
-            </p>
-            <p>
-              <strong>Blog:</strong>
-              {selectedUser.blog ? selectedUser.blog : " Private"}
-            </p>
-            <p>
-              <strong>Public Gists:</strong>
-              {selectedUser.public_gists
-                ? selectedUser.public_gists
-                : " Private"}
-            </p>
-          </div>
-        )}
-      </div>
-    </>
+    <Card sx={{ mb: 2 }}>
+      {loading ? (
+        <Box sx={{ display: "flex", justifyContent: "center", p: 2 }}>
+          <CircularProgress />
+        </Box>
+      ) : (
+        <>
+          <CardHeader
+            avatar={<Avatar src={details?.avatarUrl} />}
+            title={details?.name || details?.login}
+            subheader={details?.location || ""}
+          />
+          <CardContent>
+            {details?.bio && (
+              <Typography variant="body2" paragraph>
+                {details.bio}
+              </Typography>
+            )}
+            {details?.company && (
+              <Typography variant="body2">
+                Works at: {details.company}
+              </Typography>
+            )}
+            <Typography variant="body2">
+              Followers: {details?.followers?.nodes?.length || 0} &nbsp;|&nbsp;
+              Following: {details?.following?.nodes?.length || 0}
+            </Typography>
+            {details?.url && (
+              <Typography variant="body2" sx={{ mt: 1 }}>
+                <a href={details.url} target="_blank" rel="noreferrer">
+                  View on GitHub
+                </a>
+              </Typography>
+            )}
+          </CardContent>
+        </>
+      )}
+    </Card>
   );
 }
 

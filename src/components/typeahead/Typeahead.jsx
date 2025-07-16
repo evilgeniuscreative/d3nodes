@@ -1,89 +1,66 @@
-import React, { useState, useEffect, useCallback, createContext } from "react";
-import { AsyncTypeahead } from "react-bootstrap-typeahead";
-import debounce from "lodash.debounce";
-import "react-bootstrap-typeahead/css/Typeahead.css";
-import "./typeahead.css";
+// src/components/typeahead/Typeahead.jsx
+import React from "react";
+import {
+  Autocomplete,
+  TextField,
+  CircularProgress,
+  Avatar,
+  Popper,
+  Paper,
+  Box
+} from "@mui/material";
 
-const searchCache = {};
-
-function AsyncExample({ onUserSelect }) {
-  const [options, setOptions] = useState([]);
-  const [isLoading, setIsLoading] = useState(false);
-
-  const fetchUsers = async (query) => {
-    const token = import.meta.env.VITE_GITHUB_TOKEN;
-
-    if (searchCache[query]) {
-      setOptions(searchCache[query]);
-      return;
-    }
-
-    setIsLoading(true);
-
-    try {
-      const res = await fetch(
-        `https://api.github.com/search/users?q=${query}`,
-        {
-          headers: {
-            Authorization: `token ${token}`,
-          },
-        }
-      );
-
-      const json = await res.json();
-
-      if (res.status === 403) {
-        console.warn("Rate limited or bad token:", json.message);
-        setOptions([]);
-        setIsLoading(false);
-        return;
-      }
-
-      const users = json.items || [];
-      searchCache[query] = users;
-      setOptions(users);
-    } catch (e) {
-      console.error("Fetch failed:", e);
-      setOptions([]);
-    }
-
-    setIsLoading(false);
-  };
-
-  const debouncedFetch = useCallback(debounce(fetchUsers, 400), []);
-
+export default function Typeahead({ value, options, loading, onChange, onSelect }) {
   return (
-    <AsyncTypeahead
-      id="github-user-search"
-      isLoading={isLoading}
-      labelKey="login"
-      onSearch={(query) => {
-        if (query.length > 3) debouncedFetch(query);
+    <Paper
+      sx={{
+        maxWidth: 500,
+        mx: "auto",
+        mt: 2,
+        borderRadius: 2,
+        p: 1
       }}
-      options={options}
-      placeholder="Search GitHub users..."
-      onChange={(selected) => {
-        if (selected.length > 0) {
-          onUserSelect(selected[0]);
-        }
-      }}
-      minLength={3}
-      renderMenuItemChildren={(option) => (
-        <>
-          <img
-            alt={option.login}
-            src={option.avatar_url}
-            style={{
-              height: "24px",
-              marginRight: "10px",
-              width: "24px",
+    >
+      <Autocomplete
+        fullWidth
+        options={options}
+        loading={loading}
+        getOptionLabel={(option) => option.login || ""}
+        value={value}
+        onChange={(event, newValue) => onSelect(newValue)}
+        inputValue={value?.login || ""}
+        onInputChange={(event, newInputValue) => {
+          if (event?.type !== "change") return;
+          onChange(newInputValue);
+        }}
+        PopperComponent={(props) => (
+          <Popper {...props} modifiers={[{ name: 'offset', options: { offset: [0, 20] } }]} />
+        )}
+        renderInput={(params) => (
+          <TextField
+            {...params}
+            placeholder="Search GitHub user..."
+            variant="outlined"
+            size="medium"
+            InputProps={{
+              ...params.InputProps,
+              endAdornment: (
+                <>
+                  {loading ? <CircularProgress size={20} /> : null}
+                  {params.InputProps.endAdornment}
+                </>
+              )
             }}
+            sx={{ "& .MuiOutlinedInput-root": { borderRadius: 2 } }}
           />
-          <span>{option.login}</span>
-        </>
-      )}
-    />
+        )}
+        renderOption={(props, option) => (
+          <Box component="li" {...props}>
+            <Avatar src={option.avatar_url} sx={{ width: 24, height: 24, mr: 1 }} />
+            {option.login}
+          </Box>
+        )}
+      />
+    </Paper>
   );
 }
-
-export default AsyncExample;

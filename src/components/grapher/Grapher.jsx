@@ -2,116 +2,79 @@ import React, { createContext, useReducer, useRef, useEffect } from "react";
 import * as d3 from "d3";
 import { graphReducer, initialState } from "../../state";
 import Details from "../details/Details";
-import AsyncExample from "../typeahead/Typeahead";
+import { fetchUserAndConnections } from "../../api";
+
 export const GraphContext = createContext();
 
 function GraphApp() {
   const [state, dispatch] = useReducer(graphReducer, initialState);
   const svgRef = useRef(null);
 
-  async function fetchUserDetails(userId) {
-    const headers = {
-      Authorization: `token ${import.meta.env.VITE_GITHUB_TOKEN}`,
-    };
+  async function fetchAndExpandUser(login) {
+    const token = import.meta.env.VITE_GITHUB_TOKEN;
 
     try {
-      const res = await fetch(`https://api.github.com/users/${userId}`, {
-        headers,
-      });
-      if (!res.ok)
-        throw new Error(`Failed to fetch user details for ${userId}`);
-      const user = await res.json();
+      const user = await fetchUserAndConnections(login, token);
       dispatch({ type: "SELECT_USER", payload: user });
+
+      const connections = [...user.followers.nodes, ...user.following.nodes];
+      const newNodes = connections.map((u) => ({
+        id: u.login,
+        avatar: u.avatarUrl,
+      }));
+
+      const combinedNodes = [
+        { id: user.login, avatar: user.avatarUrl },
+        ...state.nodes,
+        ...newNodes.filter((n) => !state.nodes.find((o) => o.id === n.id)),
+      ];
+
+      const newLinks = connections.map((u) => ({
+        source: user.login,
+        target: u.login,
+      }));
+
+      dispatch({
+        type: "SET_NEW_NODES",
+        payload: {
+          nodes: combinedNodes,
+          links: [...state.links, ...newLinks],
+        },
+      });
+
+      dispatch({ type: "MARK_NODE_EXPANDED", payload: user.login });
     } catch (err) {
-      console.error("Error fetching user details:", err);
+      console.error("GraphQL error:", err);
     }
   }
 
-  async function fetchConnections(node) {
-    const headers = {
-      Authorization: `token ${import.meta.env.VITE_GITHUB_TOKEN}`,
-    };
-
-    const cache = {};
-
-    const getUsers = async (url) => {
-      if (cache[url]) return cache[url];
-
-      const res = await fetch(url, { headers });
-      if (!res.ok) {
-        const error = await res.json();
-        console.error(`GitHub error: ${res.status}`, error.message);
-        return [];
-      }
-
-      const data = await res.json();
-      cache[url] = data;
-      return data;
-    };
-
-    const [followers, following] = await Promise.all([
-      getUsers(`https://api.github.com/users/${node.id}/followers?per_page=50`),
-      getUsers(`https://api.github.com/users/${node.id}/following?per_page=50`),
-    ]);
-
-    const connections = [...followers, ...following];
-    if (!connections.length) {
-      console.warn("No connections found for", node.id);
-      return;
-    }
-
-    const newNodes = connections.map((user) => ({ id: user.login }));
-    const combinedNodes = [
-      { id: node.id },
-      ...state.nodes,
-      ...newNodes.filter((n) => !state.nodes.find((o) => o.id === n.id)),
-    ];
-
-    const newLinks = connections.map((user) => ({
-      source: node.id,
-      target: user.login,
-    }));
-
-    dispatch({
-      type: "SET_NEW_NODES",
-      payload: {
-        nodes: combinedNodes,
-        links: [...state.links, ...newLinks],
-      },
-    });
-
-    dispatch({ type: "MARK_NODE_EXPANDED", payload: node.id });
-  }
-
-  //TODO: This seems to be the key, but I can't get the right data in
   function handleNodeClick(d) {
     dispatch({ type: "SELECT_NODE", payload: d });
     if (!state.expandedNodes.includes(d.id)) {
-      console.log("fetching connections for", d);
-      fetchConnections(d);
+      fetchAndExpandUser(d.id);
     }
-    fetchUserDetails(d.id);
   }
 
   function handleUserSelect(user) {
-    const newNode = { id: user.login };
+    const newNode = { id: user.login, avatar: user.avatarUrl };
 
-    dispatch({
-      type: "SELECT_USER",
-      payload: user,
-    });
-
-    dispatch({
-      type: "SET_NEW_NODES",
-      payload: {
-        nodes: [newNode],
-        links: [],
-      },
-    });
-
+    dispatch({ type: "SELECT_USER", payload: user });
     dispatch({ type: "SELECT_NODE", payload: newNode });
 
-    fetchConnections(newNode);
+    const alreadyExists = state.nodes.find(n => n.id === user.login);
+    if (!alreadyExists) {
+      dispatch({
+        type: "SET_NEW_NODES",
+        payload: {
+          nodes: [...state.nodes, newNode],
+          links: [...state.links],
+        },
+      });
+    }
+
+    if (!state.expandedNodes.includes(user.login)) {
+      fetchAndExpandUser(user.login);
+    }
   }
 
   useEffect(() => {
@@ -122,14 +85,27 @@ function GraphApp() {
     const width = bounds.width;
     const height = bounds.height;
 
+    const defs = svg.append("defs");
+    state.nodes.forEach((d) => {
+      if (!d.avatar) return;
+      defs.append("pattern")
+        .attr("id", `avatar-${d.id}`)
+        .attr("patternUnits", "objectBoundingBox")
+        .attr("width", 1)
+        .attr("height", 1)
+        .append("image")
+        .attr("href", d.avatar)
+        .attr("width", 20)
+        .attr("height", 20)
+        .attr("x", 0)
+        .attr("y", 0);
+    });
+
     const simulation = d3
       .forceSimulation(state.nodes)
       .force(
         "link",
-        d3
-          .forceLink(state.links)
-          .id((d) => d.id)
-          .distance(100)
+        d3.forceLink(state.links).id(d => d.id).distance(100)
       )
       .force("charge", d3.forceManyBody().strength(-200))
       .force("center", d3.forceCenter(width / 2, height / 2));
@@ -150,21 +126,22 @@ function GraphApp() {
       .join("circle")
       .attr("r", 10)
       .attr("fill", (d) =>
+        d.avatar ? `url(#avatar-${d.id})` :
         state.selectedNode?.id === d.id ? "lightblue" : "steelblue"
       )
       .call(drag(simulation))
       .on("click", (event, d) => handleNodeClick(d));
 
-    node.append("title").text((d) => d.id);
+    node.append("title").text(d => d.id);
 
     simulation.on("tick", () => {
       link
-        .attr("x1", (d) => d.source.x)
-        .attr("y1", (d) => d.source.y)
-        .attr("x2", (d) => d.target.x)
-        .attr("y2", (d) => d.target.y);
+        .attr("x1", d => d.source.x)
+        .attr("y1", d => d.source.y)
+        .attr("x2", d => d.target.x)
+        .attr("y2", d => d.target.y);
 
-      node.attr("cx", (d) => d.x).attr("cy", (d) => d.y);
+      node.attr("cx", d => d.x).attr("cy", d => d.y);
     });
   }, [state.nodes, state.links, state.selectedNode]);
 
@@ -198,10 +175,23 @@ function GraphApp() {
       <div className="">
         <div className="">
           <h1 className="">Git Connections Graph</h1>
-          <AsyncExample onUserSelect={handleUserSelect} />
+          {state.selectedUser?.login && (
+            <div style={{
+              position: "absolute",
+              top: 10,
+              left: "50%",
+              transform: "translateX(-50%)",
+              backgroundColor: "#fff8b0",
+              padding: "6px 12px",
+              borderRadius: "4px",
+              fontWeight: "bold"
+            }}>
+              {state.selectedUser.login}
+            </div>
+          )}
+          {/* <AsyncExample onUserSelect={handleUserSelect} /> */}
           {state.selectedNode && <Details />}
         </div>
-
         <div style={{ flexGrow: 1, height: "100vh" }}>
           <svg ref={svgRef} width="100%" height="100%"></svg>
         </div>
