@@ -157,7 +157,15 @@ function GraphApp({ selectedUser }) {
 
   return (
     <GraphContext.Provider value={{ state, dispatch }}>
-      <Box display="flex" justifyContent="space-between" alignItems="center" mt={2} mb={1}>
+      <Box display="flex" justifyContent="space-between" alignItems="center" mt={2} mb={1} position="absolute"
+  right={0}
+  top={0}
+  width={{ xs: "100%", sm: "250px" }}
+  height="100%"
+  bgcolor="#f5f5f5"
+  p={2}
+  overflow="auto"
+  zIndex={10}>
         <FormControl size="small">
           <InputLabel>Selected User Connections to Show</InputLabel>
           <Select
