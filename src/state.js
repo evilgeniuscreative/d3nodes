@@ -4,6 +4,7 @@ export const initialState = {
   links: [],
   selectedNode: null,
   expandedNodes: [],
+  rateLimit: null,
 };
 
 export function graphReducer(state, action) {
@@ -13,20 +14,14 @@ export function graphReducer(state, action) {
         ...state,
         nodes: action.payload.nodes,
         links: action.payload.links,
+        rateLimit: action.payload.rateLimit || state.rateLimit
       };
 
     case "SELECT_NODE":
-      return {
-        ...state,
-        selectedNode: action.payload,
-      };
+      return { ...state, selectedNode: action.payload };
 
     case "SELECT_USER":
-      console.log("SELECT_USER", action.payload);
-      return {
-        ...state,
-        selectedUser: action.payload,
-      };
+      return { ...state, selectedUser: action.payload };
 
     case "MARK_NODE_EXPANDED":
       return {

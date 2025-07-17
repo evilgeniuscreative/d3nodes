@@ -5,12 +5,18 @@ import {
   TextField,
   CircularProgress,
   Avatar,
-  Popper,
   Paper,
   Box
 } from "@mui/material";
 
-export default function Typeahead({ value, options, loading, onChange, onSelect }) {
+export default function Typeahead({
+  value,
+  inputValue,
+  options,
+  loading,
+  onChange,
+  onSelect
+}) {
   return (
     <Paper
       sx={{
@@ -27,15 +33,12 @@ export default function Typeahead({ value, options, loading, onChange, onSelect 
         loading={loading}
         getOptionLabel={(option) => option.login || ""}
         value={value}
+        inputValue={inputValue}
         onChange={(event, newValue) => onSelect(newValue)}
-        inputValue={value?.login || ""}
         onInputChange={(event, newInputValue) => {
           if (event?.type !== "change") return;
           onChange(newInputValue);
         }}
-        PopperComponent={(props) => (
-          <Popper {...props} modifiers={[{ name: 'offset', options: { offset: [0, 20] } }]} />
-        )}
         renderInput={(params) => (
           <TextField
             {...params}
@@ -56,7 +59,7 @@ export default function Typeahead({ value, options, loading, onChange, onSelect 
         )}
         renderOption={(props, option) => (
           <Box component="li" {...props}>
-            <Avatar src={option.avatar_url} sx={{ width: 24, height: 24, mr: 1 }} />
+            <Avatar src={option.avatarUrl} sx={{ width: 24, height: 24, mr: 1 }} />
             {option.login}
           </Box>
         )}

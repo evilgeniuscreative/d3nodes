@@ -8,8 +8,7 @@
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-   
-    "clean":"rm -rf dist && rm -rf node_modules",
+    "clean": "rm -rf dist && kill $(lsof -ti :5000) && kill $(lsof -ti :5173) && kill $(lsof -ti :3000) && exit 1",
     "kill": "kill $(lsof -ti :5000) && kill $(lsof -ti :5173) && kill $(lsof -ti :3000) && exit 1",
     "start": "node server/server.js"
   },

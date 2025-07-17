@@ -1,38 +1,88 @@
-// src/api.js
-
 export async function fetchUserAndConnections(login) {
   const query = `
-    query GetUserAndConnections($login: String!) {
+    query($login: String!) {
       user(login: $login) {
         login
         name
         avatarUrl
+        email
+        company
         bio
-        followers(first: 50) {
+        twitterUsername
+        url
+        websiteUrl
+        createdAt
+        updatedAt
+        followers(first: 100) {
           nodes {
             login
             avatarUrl
+            name
           }
         }
-        following(first: 50) {
+        following(first: 100) {
           nodes {
             login
             avatarUrl
+            name
           }
         }
+        publicRepos: repositories(privacy: PUBLIC) {
+          totalCount
+        }
+        privateRepos: repositories(privacy: PRIVATE) {
+          totalCount
+        }
+        publicGists: gists(privacy: PUBLIC) {
+          totalCount
+        }
+        totalPrivateRepos: repositories(privacy: PRIVATE, ownerAffiliations: [OWNER]) {
+          totalCount
+        }
+      }
+      rateLimit {
+        limit
+        remaining
+        resetAt
       }
     }
   `;
 
   const res = await fetch("/api/github/graphql", {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ query, variables: { login } }),
   });
 
   const { data, errors } = await res.json();
   if (errors) throw new Error(errors.map(e => e.message).join("; "));
-  return data.user;
+
+  const normalize = (user) => ({
+    id: user.login,
+    login: user.login,
+    name: user.name,
+    avatarUrl: user.avatarUrl,
+  });
+
+  const userNode = normalize(data.user);
+  const followerNodes = data.user.followers.nodes.map(normalize);
+  const followingNodes = data.user.following.nodes.map(normalize);
+
+  const seen = new Set();
+  const nodes = [userNode, ...followerNodes, ...followingNodes].filter(u => {
+    if (seen.has(u.id)) return false;
+    seen.add(u.id);
+    return true;
+  });
+
+  const links = [
+    ...followerNodes.map(f => ({ source: f.id, target: userNode.id })),
+    ...followingNodes.map(f => ({ source: userNode.id, target: f.id })),
+  ];
+
+  return {
+    nodes,
+    links,
+    rateLimit: data.rateLimit,
+  };
 }

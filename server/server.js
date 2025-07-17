@@ -5,9 +5,6 @@ import dotenv from "dotenv";
 import path from "path";
 import { fileURLToPath } from "url";
 
-// if (process.env.PATH && process.env.PATH.includes("git.new")) {
-//   throw new Error("Misconfigured PATH env var — do not use reserved system variables for URLs.");
-// }
 
 dotenv.config();
 
