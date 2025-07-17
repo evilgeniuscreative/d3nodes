@@ -7,6 +7,33 @@ import { FormControl, InputLabel, Select, MenuItem, Box } from "@mui/material";
 
 export const GraphContext = createContext();
 
+
+function zoomToFit(svgRef, gRef, duration = 750, padding = 50) {
+  const svg = d3.select(svgRef.current);
+  const g = d3.select(gRef.current.node());
+
+  const bbox = g.node().getBBox();
+  const svgWidth = svgRef.current.clientWidth;
+  const svgHeight = svgRef.current.clientHeight;
+
+  const scale = Math.min(
+    svgWidth / (bbox.width + padding),
+    svgHeight / (bbox.height + padding)
+  );
+
+  const translateX = svgWidth / 2 - scale * (bbox.x + bbox.width / 2);
+  const translateY = svgHeight / 2 - scale * (bbox.y + bbox.height / 2);
+
+  svg.transition()
+    .duration(duration)
+    .call(
+      d3.zoom().transform,
+      d3.zoomIdentity.translate(translateX, translateY).scale(scale)
+    );
+}
+
+
+
 function GraphApp({ selectedUser }) {
   const [state, dispatch] = useReducer(graphReducer, initialState);
   const svgRef = useRef(null);
@@ -145,6 +172,8 @@ function GraphApp({ selectedUser }) {
 
     } catch (err) {
       console.error("Failed to fetch user data for:", login, err);
+      zoomToFit(svgRef, gRef);
+
     }
   };
 
