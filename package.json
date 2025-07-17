@@ -8,9 +8,12 @@
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "clean": "rm -rf dist && kill $(lsof -ti :5000) && kill $(lsof -ti :5173) && kill $(lsof -ti :3000) && exit 1",
-    "kill": "kill $(lsof -ti :5000) && kill $(lsof -ti :5173) && kill $(lsof -ti :3000) && exit 1",
-    "start": "node server/server.js"
+    "start": "node server/server.js",
+    "clean": "rm -rf dist && kill $(lsof -ti :5000) || true && kill $(lsof -ti :5173) || true && kill $(lsof -ti :3000) || true",
+    "kill": "kill $(lsof -ti :5000) || true && kill $(lsof -ti :5173) || true && kill $(lsof -ti :3000) || true",
+    "all": "npm run clean && npm run kill && npm run build && npm run start"
+
+ 
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",

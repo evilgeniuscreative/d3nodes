@@ -3,12 +3,10 @@ import * as d3 from "d3";
 import { graphReducer, initialState } from "../../state";
 import Details from "../details/Details";
 import { fetchUserAndConnections } from "../../api";
-import { useGitHub } from "../../context/GitHubContext";
 
 export const GraphContext = createContext();
 
-function GraphApp() {
-  const userData = useGitHub();
+function GraphApp({ selectedUser }) {
   const [state, dispatch] = useReducer(graphReducer, initialState);
   const svgRef = useRef(null);
   const gRef = useRef(null);
@@ -20,7 +18,6 @@ function GraphApp() {
       .attr("width", "100%")
       .attr("height", 600);
 
-    // Set up root group for zooming if not already created
     if (!gRef.current) {
       gRef.current = svg.append("g").attr("class", "zoom-container");
       gRef.current.append("g").attr("class", "links");
@@ -37,7 +34,7 @@ function GraphApp() {
     }
 
     simulationRef.current = d3.forceSimulation()
-      .force("link", d3.forceLink().id(d => d.login).distance(80))
+      .force("link", d3.forceLink().id(d => d.id).distance(80))
       .force("charge", d3.forceManyBody().strength(-120))
       .force("center", d3.forceCenter(svgRef.current.clientWidth / 2, 300))
       .force("x", d3.forceX(svgRef.current.clientWidth / 2).strength(0.05))
@@ -49,6 +46,10 @@ function GraphApp() {
     const g = gRef.current;
     const simulation = simulationRef.current;
 
+    simulation.nodes(state.nodes);
+    simulation.force("link").links(state.links);
+    simulation.tick(10); // Run 10 ticks to initialize layout
+
     const link = g.select("g.links")
       .selectAll("line")
       .data(state.links, d => d.source + "-" + d.target)
@@ -58,12 +59,14 @@ function GraphApp() {
 
     const node = g.select("g.nodes")
       .selectAll("circle")
-      .data(state.nodes, d => d.login)
+      .data(state.nodes, d => d.id)
       .join("circle")
       .attr("r", 16)
       .attr("fill", "#ccc")
       .attr("stroke", "#333")
       .attr("stroke-width", 1.5)
+      .attr("cx", d => d.x)
+      .attr("cy", d => d.y)
       .style("cursor", "pointer")
       .on("click", (event, d) => {
         if (!state.expandedNodes.includes(d.login)) {
@@ -89,7 +92,7 @@ function GraphApp() {
           d.fy = null;
         }));
 
-    simulation.nodes(state.nodes).on("tick", () => {
+    simulation.on("tick", () => {
       node.attr("cx", d => d.x).attr("cy", d => d.y);
       link
         .attr("x1", d => getNode(d.source)?.x)
@@ -97,24 +100,34 @@ function GraphApp() {
         .attr("x2", d => getNode(d.target)?.x)
         .attr("y2", d => getNode(d.target)?.y);
     });
-
-    simulation.force("link").links(state.links);
   }, [state.nodes, state.links]);
 
+  useEffect(() => {
+    if (!selectedUser?.login || state.expandedNodes.includes(selectedUser.login)) return;
+    fetchAndExpandUser(selectedUser.login, selectedUser);
+    setDetailsVisible(true);
+  }, [selectedUser]);
+
   const fetchAndExpandUser = async (login, nodeData) => {
-    if (!login) {
-      console.warn("Missing login value for node:", nodeData);
-      return;
-    }
-  
+    if (!login) return;
     try {
       const { nodes, links, rateLimit } = await fetchUserAndConnections(login);
-      dispatch({
-        type: "SET_NEW_NODES",
-        payload: { nodes, links, rateLimit }
+
+      const centeredX = svgRef.current.clientWidth / 2;
+      const centeredY = 300;
+
+      nodes.forEach((node) => {
+        if (!("x" in node)) node.x = centeredX;
+        if (!("y" in node)) node.y = centeredY;
       });
+
+      dispatch({ type: "SET_NEW_NODES", payload: { nodes, links, rateLimit } });
       dispatch({ type: "MARK_NODE_EXPANDED", payload: login });
       dispatch({ type: "SELECT_USER", payload: nodeData });
+
+      if (simulationRef.current) {
+        simulationRef.current.alpha(1).restart();
+      }
     } catch (err) {
       console.error("Failed to fetch user data for:", login, err);
     }
@@ -122,7 +135,7 @@ function GraphApp() {
 
   const getNode = idOrNode =>
     typeof idOrNode === "string"
-      ? state.nodes.find(n => n.login === idOrNode)
+      ? state.nodes.find(n => n.id === idOrNode)
       : idOrNode;
 
   return (

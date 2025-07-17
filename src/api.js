@@ -86,3 +86,30 @@ export async function fetchUserAndConnections(login) {
     rateLimit: data.rateLimit,
   };
 }
+
+export async function searchUsers(query) {
+  const searchQuery = `
+    query($query: String!) {
+      search(query: $query, type: USER, first: 10) {
+        nodes {
+          ... on User {
+            login
+            name
+            avatarUrl
+          }
+        }
+      }
+    }
+  `;
+
+  const res = await fetch("/api/github/graphql", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ query: searchQuery, variables: { query } }),
+  });
+
+  const { data, errors } = await res.json();
+  if (errors) throw new Error(errors.map(e => e.message).join("; "));
+
+  return data.search.nodes;
+}
