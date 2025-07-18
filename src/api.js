@@ -1,6 +1,6 @@
-export async function fetchUserAndConnections(login) {
+export async function fetchUserAndConnections(login, limit = 100) {
   const query = `
-    query($login: String!) {
+    query($login: String!, $limit: Int!) {
       user(login: $login) {
         login
         name
@@ -13,14 +13,14 @@ export async function fetchUserAndConnections(login) {
         websiteUrl
         createdAt
         updatedAt
-        followers(first: 100) {
+        followers(first: $limit) {
           nodes {
             login
             avatarUrl
             name
           }
         }
-        following(first: 100) {
+        following(first: $limit) {
           nodes {
             login
             avatarUrl
@@ -51,11 +51,11 @@ export async function fetchUserAndConnections(login) {
   const res = await fetch("/api/github/graphql", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ query, variables: { login } }),
+    body: JSON.stringify({ query, variables: { login, limit } }),
   });
 
   const { data, errors } = await res.json();
-  if (errors) throw new Error(errors.map(e => e.message).join("; "));
+  if (errors) throw new Error(errors.map((e) => e.message).join("; "));
 
   const normalize = (user) => ({
     id: user.login,
@@ -65,19 +65,19 @@ export async function fetchUserAndConnections(login) {
   });
 
   const userNode = normalize(data.user);
-  const followerNodes = data.user.followers.nodes.map(normalize);
-  const followingNodes = data.user.following.nodes.map(normalize);
+  const followerNodes = data.user.followers?.nodes?.map(normalize) || [];
+  const followingNodes = data.user.following?.nodes?.map(normalize) || [];
 
   const seen = new Set();
-  const nodes = [userNode, ...followerNodes, ...followingNodes].filter(u => {
+  const nodes = [userNode, ...followerNodes, ...followingNodes].filter((u) => {
     if (seen.has(u.id)) return false;
     seen.add(u.id);
     return true;
   });
 
   const links = [
-    ...followerNodes.map(f => ({ source: f.id, target: userNode.id })),
-    ...followingNodes.map(f => ({ source: userNode.id, target: f.id })),
+    ...followerNodes.map((f) => ({ source: f.id, target: userNode.id })),
+    ...followingNodes.map((f) => ({ source: userNode.id, target: f.id })),
   ];
 
   return {
@@ -109,7 +109,7 @@ export async function searchUsers(query) {
   });
 
   const { data, errors } = await res.json();
-  if (errors) throw new Error(errors.map(e => e.message).join("; "));
+  if (errors) throw new Error(errors.map((e) => e.message).join("; "));
 
   return data.search.nodes;
 }

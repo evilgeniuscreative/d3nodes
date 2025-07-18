@@ -1,242 +1,49 @@
-import React, { createContext, useReducer, useRef, useEffect, useState } from "react";
-import * as d3 from "d3";
-import { graphReducer, initialState } from "../../state";
-import { fetchUserAndConnections } from "../../api";
-import Details from "../details/Details";
-import { FormControl, InputLabel, Select, MenuItem, Box } from "@mui/material";
+import React, { useState } from "react";
+import { TextField, Autocomplete, Box, Avatar, Typography } from "@mui/material";
+import { searchUsers } from "../../api";
 
-export const GraphContext = createContext();
+function Typeahead({ onUserSelect }) {
+  const [options, setOptions] = useState([]);
+  const [inputValue, setInputValue] = useState("");
 
-
-function zoomToFit(svgRef, gRef, duration = 750, padding = 50) {
-  const svg = d3.select(svgRef.current);
-  const g = d3.select(gRef.current.node());
-
-  const bbox = g.node().getBBox();
-  const svgWidth = svgRef.current.clientWidth;
-  const svgHeight = svgRef.current.clientHeight;
-
-  const scale = Math.min(
-    svgWidth / (bbox.width + padding),
-    svgHeight / (bbox.height + padding)
-  );
-
-  const translateX = svgWidth / 2 - scale * (bbox.x + bbox.width / 2);
-  const translateY = svgHeight / 2 - scale * (bbox.y + bbox.height / 2);
-
-  svg.transition()
-    .duration(duration)
-    .call(
-      d3.zoom().transform,
-      d3.zoomIdentity.translate(translateX, translateY).scale(scale)
-    );
-}
-
-
-
-function GraphApp({ selectedUser }) {
-  const [state, dispatch] = useReducer(graphReducer, initialState);
-  const svgRef = useRef(null);
-  const gRef = useRef(null);
-  const simulationRef = useRef(null);
-  const [detailsVisible, setDetailsVisible] = useState(false);
-  const [connectionLimit, setConnectionLimit] = useState(100);
-
-  useEffect(() => {
-    const svg = d3.select(svgRef.current)
-      .attr("viewBox", `0 0 1000 600`)
-      .attr("preserveAspectRatio", "xMidYMid meet");
-
-    if (!gRef.current) {
-      gRef.current = svg.append("g").attr("class", "zoom-container");
-      gRef.current.append("g").attr("class", "links");
-      gRef.current.append("g").attr("class", "nodes");
-      gRef.current.append("g").attr("class", "labels");
-
-      svg.call(
-        d3.zoom()
-          .scaleExtent([0.25, 4])
-          .on("zoom", (event) => {
-            gRef.current.attr("transform", event.transform);
-          })
-      );
-    }
-
-    simulationRef.current = d3.forceSimulation()
-      .force("link", d3.forceLink().id(d => d.id).distance(d => {
-        if (d.source.id === selectedUser?.login) return 200;
-        return 100;
-      }))
-      .force("charge", d3.forceManyBody().strength(-160))
-      .force("center", d3.forceCenter(500, 300))
-      .force("x", d3.forceX(500).strength(0.05))
-      .force("y", d3.forceY(300).strength(0.05));
-  }, []);
-
-  useEffect(() => {
-    const svg = d3.select(svgRef.current);
-    const g = gRef.current;
-    const simulation = simulationRef.current;
-
-    simulation.nodes(state.nodes);
-    simulation.force("link").links(state.links);
-    simulation.tick(10);
-
-    const link = g.select("g.links")
-      .selectAll("line")
-      .data(state.links, d => d.source + "-" + d.target)
-      .join("line")
-      .attr("stroke", "#999")
-      .attr("stroke-opacity", 0.6);
-
-    const node = g.select("g.nodes")
-      .selectAll("image")
-      .data(state.nodes, d => d.id)
-      .join("image")
-      .attr("xlink:href", d => d.avatarUrl)
-      .attr("x", d => d.x - 16)
-      .attr("y", d => d.y - 16)
-      .attr("width", 32)
-      .attr("height", 32)
-      .attr("clip-path", "circle(16px at center)")
-      .attr("stroke", d => d.id === state.selectedUser?.id ? "red" : "#333")
-      .attr("stroke-width", d => d.id === state.selectedUser?.id ? 2 : 1)
-      .on("click", (event, d) => {
-        if (!state.expandedNodes.includes(d.login)) {
-          fetchAndExpandUser(d.login, d);
-        } else {
-          dispatch({ type: "SELECT_USER", payload: d });
-        }
-        setDetailsVisible(true);
-      })
-      .on("mouseover", function (event, d) {
-        d3.select(this).transition().attr("width", 48).attr("height", 48)
-          .attr("x", d.x - 24).attr("y", d.y - 24);
-      })
-      .on("mouseout", function (event, d) {
-        d3.select(this).transition().attr("width", 32).attr("height", 32)
-          .attr("x", d.x - 16).attr("y", d.y - 16);
-      });
-
-    g.select("g.labels")
-      .selectAll("text")
-      .data(state.nodes.filter(n => state.expandedNodes.includes(n.login)), d => d.id)
-      .join("text")
-      .text(d => d.login)
-      .attr("x", d => d.x)
-      .attr("y", d => d.y - 22)
-      .attr("text-anchor", "middle")
-      .attr("fill", "#F4C430")
-      .attr("font-size", 10)
-      .attr("font-family", "Ubuntu");
-
-    simulation.on("tick", () => {
-      node
-        .attr("x", d => d.x - 16)
-        .attr("y", d => d.y - 16);
-      link
-        .attr("x1", d => getNode(d.source)?.x)
-        .attr("y1", d => getNode(d.source)?.y)
-        .attr("x2", d => getNode(d.target)?.x)
-        .attr("y2", d => getNode(d.target)?.y);
-    });
-
-  }, [state.nodes, state.links, state.selectedUser]);
-
-  useEffect(() => {
-    if (!selectedUser?.login || state.expandedNodes.includes(selectedUser.login)) return;
-    fetchAndExpandUser(selectedUser.login, selectedUser);
-    setDetailsVisible(true);
-  }, [selectedUser, connectionLimit]);
-
-  const fetchAndExpandUser = async (login, nodeData) => {
-    if (!login) return;
-    try {
-      const { nodes, links, rateLimit } = await fetchUserAndConnections(login);
-
-      const centeredX = 500;
-      const centeredY = 300;
-
-      nodes.forEach((node) => {
-        if (!("x" in node)) node.x = centeredX;
-        if (!("y" in node)) node.y = centeredY;
-      });
-
-      dispatch({ type: "MERGE_NODES_AND_LINKS", payload: { nodes, links, rateLimit } });
-      dispatch({ type: "MARK_NODE_EXPANDED", payload: login });
-      dispatch({ type: "SELECT_USER", payload: nodeData });
-
-      if (simulationRef.current) {
-        simulationRef.current.alpha(1).restart();
+  const handleInputChange = async (event, value) => {
+    setInputValue(value);
+    if (value.length > 2) {
+      try {
+        const results = await searchUsers(value);
+        setOptions(results);
+      } catch (error) {
+        console.error("Search failed", error);
       }
-
-    } catch (err) {
-      console.error("Failed to fetch user data for:", login, err);
-      zoomToFit(svgRef, gRef);
-
     }
   };
 
-  const getNode = idOrNode =>
-    typeof idOrNode === "string"
-      ? state.nodes.find(n => n.id === idOrNode)
-      : idOrNode;
+  const handleChange = (event, value) => {
+    if (value) {
+      onUserSelect(value);
+    }
+  };
 
   return (
-    <GraphContext.Provider value={{ state, dispatch }}>
-      <Box
-        display="flex"
-        flexDirection={{ xs: "column", sm: "row" }}
-        justifyContent="space-between"
-        alignItems="center"
-        mt={2}
-        mb={1}
-        gap={2}
-      >
-        <FormControl size="small" sx={{ minWidth: 250 }}>
-          <InputLabel>Selected User Connections to Show</InputLabel>
-          <Select
-            value={connectionLimit}
-            label="Selected User Connections to Show"
-            onChange={(e) => setConnectionLimit(parseInt(e.target.value))}
-          >
-            {(() => {
-              const maxConnections = (selectedUser?.followers?.totalCount || 0) + (selectedUser?.following?.totalCount || 0);
-              const defaultMax = Math.max(100, maxConnections);
-              const step = Math.ceil(defaultMax / 10);
-
-              const options = Array.from({ length: 10 }, (_, i) => {
-                const val = Math.round((i + 1) * step / 10) * 10;
-                return val > maxConnections ? maxConnections : val;
-              });
-
-              const uniqueSorted = [...new Set(options)].sort((a, b) => a - b);
-
-              return uniqueSorted.map(value => (
-                <MenuItem key={value} value={value}>{value}</MenuItem>
-              ));
-            })()}
-          </Select>
-        </FormControl>
-      </Box>
-      <svg ref={svgRef} style={{ width: "100%", height: "600px" }}></svg>
-      {detailsVisible && (
-        <Box
-          position="absolute"
-          right={0}
-          top={0}
-          width={{ xs: "100%", sm: "250px" }}
-          height="100%"
-          bgcolor="#f5f5f5"
-          p={2}
-          overflow="auto"
-          zIndex={10}
-        >
-          <Details user={state.selectedUser} />
-        </Box>
-      )}
-    </GraphContext.Provider>
+    <Box width={400}>
+      <Autocomplete
+        options={options}
+        getOptionLabel={(option) => option.name || option.login}
+        onInputChange={handleInputChange}
+        onChange={handleChange}
+        inputValue={inputValue}
+        renderOption={(props, option) => (
+          <Box component="li" {...props} display="flex" alignItems="center" gap={1}>
+            <Avatar src={option.avatarUrl || ""} sx={{ width: 24, height: 24 }} />
+            <Typography>{option.name} [{option.login}]</Typography>
+          </Box>
+        )}
+        renderInput={(params) => (
+          <TextField {...params} label="Search GitHub Users" variant="outlined" fullWidth />
+        )}
+      />
+    </Box>
   );
 }
 
-export default GraphApp;
+export default Typeahead;
